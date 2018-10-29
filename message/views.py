@@ -44,3 +44,23 @@ def conversations(request):
     data = Conversation.objects.all()
     context = [{'name':person.user.username, 'status': person.status, 'message':person.message, 'id':person.id} for person in data]
     return JsonResponse(context, safe = False)
+
+def delivered(request, id):
+    message = Conversation.objects.get(id = id)
+    if request.user.id != message.user.id:
+        socket_id = request.POST.get('socket_id', '')
+        message.status =  'Delivered'
+        message.save()
+
+        message = {
+            'name': message.user.username,
+            'status': message.status,
+            'message': message.message,
+            'id': message.id
+        }
+
+        pusher.trigger(u'a_channel', u'delivered_message', message, socket_id )
+        return HttpResponse('ok')
+
+    else:
+        return HttpResponse('Awaiting Delivery')
