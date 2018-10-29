@@ -19,3 +19,28 @@ pusher_client = Pusher(
 @login_required(login_url='login/')
 def index(request):
     return render(request, "chat.html")
+
+@csrf_exempt
+def broadcast(request):
+    try:
+        data = request.POST
+        message_text = data.get('message','')
+        status = ''
+        user = request.user
+        instance = Conversation(message=message_text, status=status, user=user)
+        instance.save()
+
+        message = {
+            'name': instance.user.username,
+            'status': instance.status,
+            'message': instance.message,
+            'id': instance.id
+        }
+
+        pusher_client.trigger(u'a_channel', u'an_event', message)
+        return JsonResponse(message, safe = False)
+
+def conversations(request):
+    data = Conversation.objects.all()
+    context = [{'name':person.user.username, 'status': person.status, 'message':person.message, 'id':person.id} for person in data]
+    return JsonResponse(context, safe = False)
